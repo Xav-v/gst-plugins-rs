@@ -182,7 +182,7 @@ impl ObjectImpl for SpotifyAudioSrc {
             "track" => {
                 let track = value.get().expect("type checked upstream");
                 if let Err(err) = self.set_track(_obj, track) {
-                    gst_error!(
+                    gst::error!(
                         CAT,
                         obj: _obj,
                         "Failed to set property `{}`: {:?}",
@@ -345,26 +345,30 @@ impl URIHandlerImpl for SpotifyAudioSrc {
 
         assert!(spotify_uri.cannot_be_a_base());
         let auth_query: HashMap<_, _> = spotify_uri.query_pairs().into_owned().collect();
-        let username = auth_query.get("username").ok_or(
-            glib::Error::new(
-                gst::URIError::BadUri,
-                format!("Failed to parse username from Spotify URI '{}'", uri).as_str(),
-            )
-        )?;
-        let password = auth_query.get("password").ok_or(
-            glib::Error::new(
-                gst::URIError::BadUri,
-                format!("Failed to parse password from Spotify URI '{}'", uri).as_str(),
-            )
-        )?;
-        let uri = spotify_uri[..Position::AfterPath].to_string();
-
-        {
+        if auth_query.contains_key("username") {
+            let username = auth_query.get("username").ok_or(
+                glib::Error::new(
+                    gst::URIError::BadUri,
+                    format!("Failed to parse username from Spotify URI '{}'", uri).as_str(),
+                )
+            )?;
             let mut settings = self.settings.lock().unwrap();
             settings.username = username.to_string();
-            settings.password = password.to_string();
         }
 
+        if auth_query.contains_key("password") {
+            let password = auth_query.get("password").ok_or(
+                glib::Error::new(
+                    gst::URIError::BadUri,
+                    format!("Failed to parse password from Spotify URI '{}'", uri).as_str(),
+                )
+            )?;
+            let mut settings = self.settings.lock().unwrap();
+            settings.password = password.to_string();
+        }
+        let uri = spotify_uri[..Position::AfterPath].to_string();
+
+        gst::debug!(CAT, obj: element, "Setting uri {}", uri);
         self.set_track(element, &uri)
     }
 
@@ -399,6 +403,7 @@ impl SpotifyAudioSrc {
     async fn setup(&self) -> anyhow::Result<()> {
         let src = self.instance();
 
+        gst::debug!(CAT, obj: &src, "Doing setup",); // DEBUG
         let (credentials, cache, track) = {
             let settings = self.settings.lock().unwrap();
 
@@ -474,7 +479,9 @@ impl SpotifyAudioSrc {
             Err(_) => bail!("Failed to create Spotify URI from track"),
         };
 
+        gst::debug!(CAT, obj: &src, "Loading track");
         player.load(track, true, 0);
+        gst::debug!(CAT, obj: &src, "Loaded track");
 
         let player_channel_handle = RUNTIME.spawn(async move {
             let sender = sender_clone;
@@ -498,7 +505,7 @@ impl SpotifyAudioSrc {
             receiver,
             player_channel_handle,
         });
-
+        gst::debug!(CAT, obj: &src, "All done!");
         Ok(())
     }
 }
