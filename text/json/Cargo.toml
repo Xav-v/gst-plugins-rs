@@ -1,10 +1,10 @@
 [package]
 name = "gst-plugin-json"
-version = "0.9.0"
+version = "0.8.4"
 authors = ["Mathieu Duponchelle <mathieu@centricular.com>"]
 license = "MPL-2.0"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.56"
 description = "Rust JSON Plugin"
 repository = "https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"
 
@@ -15,6 +15,8 @@ serde_json = { version = "1.0", features = ["raw_value"] }
 
 [dependencies.gst]
 git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+branch = "0.18"
+version = "0.18"
 package="gstreamer"
 
 [lib]
@@ -23,15 +25,18 @@ crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [build-dependencies]
-gst-plugin-version-helper = { path="../../version-helper" }
+gst-plugin-version-helper = { path = "../../version-helper", version = "0.7" }
 
 [dev-dependencies.gst-check]
 git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+branch = "0.18"
+version = "0.18"
 package="gstreamer-check"
 
 [features]
 default = ["gst/ser_de"]
-static = ["default"]
+# GStreamer 1.14 is required for static linking
+static = ["default", "gst/v1_14"]
 capi = []
 
 [package.metadata.capi]
